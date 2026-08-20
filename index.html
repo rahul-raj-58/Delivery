@@ -201,9 +201,12 @@
   .view-tab:hover { color: var(--ink-primary); border-color: var(--border-strong); }
   .view-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .view-tab.active { background: var(--accent); color: var(--surface); border-color: var(--accent); }
-  .product-columns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
-  @media (max-width: 900px) { .product-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 560px) { .product-columns { grid-template-columns: 1fr; } }
+  .product-columns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; margin-bottom: 12px; }
+  .metric-band { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; margin-bottom: 12px; }
+  .metric-cell { min-width: 0; }
+  .metric-cell.empty { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; pointer-events: none; }
+  @media (max-width: 900px) { .product-columns, .metric-band { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .product-columns, .metric-band { grid-template-columns: 1fr; } }
   .view-panel { display: none; }
   .view-panel.active { display: block; }
   .pill {
@@ -235,6 +238,10 @@
   .cadence-note { font-size: 10px; color: var(--ink-muted); }
   .dash { color: var(--border-strong); font-size: 13px; }
   .product-body {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 14px 16px;
+  }
+  .metric-cell .metric-block {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
     box-shadow: var(--shadow); padding: 14px 16px;
   }
@@ -593,11 +600,25 @@ function buildMetricCard(m) {
     <div class="view-panel" data-view="smb">${buildSegPanel(m, 'SMB')}</div>
   </div>`;
 }
+// Canonical metric order — determines which row each metric type appears in
+// Each slot: default matcher used for Image/360/Video; per-product key overrides for Catalog.
+// This lets Catalog's Live Accounts sit beside TAT P95, and Website Reviews beside TAT P99.
+const METRIC_ORDER = [
+  { default: m => m.name.includes('P95'),
+    catalog: m => m.name.toLowerCase().includes('live') },
+  { default: m => m.name.includes('P99'),
+    catalog: m => m.name.toLowerCase().includes('review') },
+  { default: m => m.name.toUpperCase().includes('SLA') },
+  { default: m => m.name.includes('P&L') || m.name.toLowerCase().includes('cost') },
+  { default: m => /fulfi(l|ll)ment/i.test(m.name) },
+];
+
 function renderColumns() {
   const el = document.getElementById('sections');
-  const cols = DATA.map(prod => {
+
+  // Row 0 — product headers
+  const headerCols = DATA.map(prod => {
     const hasAnyWeekly = prod.metrics.some(m => m.weekly);
-    const cards = prod.metrics.map(buildMetricCard).join('');
     return `<div class="product-col">
       <div class="product-head">
         <div class="name-row">
@@ -609,10 +630,28 @@ function renderColumns() {
           <span class="cadence-note">${hasAnyWeekly ? 'Weekly + monthly' : 'Monthly only'}</span>
         </div>
       </div>
-      <div class="product-body">${cards}</div>
     </div>`;
   }).join('');
-  el.innerHTML = `<div class="product-columns">${cols}</div>`;
+
+  // Rows 1-N — one band per slot; each product uses its own matcher override if defined
+  const bands = METRIC_ORDER.map(slot => {
+    const cells = DATA.map(prod => {
+      const matcher = slot[prod.code] || slot.default;
+      if (!matcher) return `<div class="metric-cell empty"></div>`;
+      const m = prod.metrics.find(matcher);
+      return m
+        ? `<div class="metric-cell">${buildMetricCard(m)}</div>`
+        : `<div class="metric-cell empty"></div>`;
+    }).join('');
+    // Skip row if every cell is empty
+    const hasAny = DATA.some(prod => {
+      const matcher = slot[prod.code] || slot.default;
+      return matcher && prod.metrics.find(matcher);
+    });
+    return hasAny ? `<div class="metric-band">${cells}</div>` : '';
+  }).join('');
+
+  el.innerHTML = `<div class="product-columns">${headerCols}</div>${bands}`;
 }
 function initViewTabs() {
   const bar = document.getElementById('viewTabs');
