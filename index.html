@@ -729,15 +729,24 @@ async function refreshFromSheet() {
     const rows = parseCSV(await res.text());
     const products = buildProductsFromRows(rows);
     if (!products.length) throw new Error('No rows parsed from sheet');
+    // Strip P&L — Cost / Revenue from Catalog (not tracked here)
+    products.forEach(p => {
+      if (p.code === 'catalog') p.metrics = p.metrics.filter(m => !m.name.includes('P&L'));
+    });
     DATA = products.map(p => ({ code: p.code, name: p.name, owner: p.owner, tag: p.tag, metrics: p.metrics }));
     GLANCE_PICKS = {};
     products.forEach(p => { GLANCE_PICKS[p.code] = pickGlance(p.metrics); });
     renderGlance();
     renderColumns();
-    document.getElementById('updatedStamp').textContent = new Date().toLocaleString('en-GB', {
+    const stamp = new Date().toLocaleString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
       timeZone: 'UTC', timeZoneName: 'short',
     });
+    document.getElementById('updatedStamp').textContent = stamp;
+    // Persist to cache
+    try {
+      localStorage.setItem('ops_cache', JSON.stringify({ data: DATA, glance: GLANCE_PICKS, stamp, ts: Date.now() }));
+    } catch(_) {}
   } catch (err) {
     statusEl.textContent = "Couldn't reach the sheet from here — if this page is inside an embedded preview, open the downloaded HTML file directly in a browser instead.";
     statusEl.classList.add('error');
@@ -746,13 +755,33 @@ async function refreshFromSheet() {
     btn.classList.remove('loading');
   }
 }
+function loadFromCache() {
+  try {
+    const raw = localStorage.getItem('ops_cache');
+    if (!raw) return false;
+    const { data, glance, stamp } = JSON.parse(raw);
+    if (!data || !data.length) return false;
+    DATA = data;
+    GLANCE_PICKS = glance || GLANCE_PICKS;
+    renderGlance();
+    renderColumns();
+    if (stamp) document.getElementById('updatedStamp').textContent = stamp + ' (cached)';
+    return true;
+  } catch(_) { return false; }
+}
 function initRefreshButton() {
   document.getElementById('refreshBtn').addEventListener('click', refreshFromSheet);
+  // Auto-refresh every 1 hour
+  setInterval(refreshFromSheet, 60 * 60 * 1000);
 }
-renderGlance();
-renderColumns();
+// Load cache immediately, then silently refresh in the background
+const hadCache = loadFromCache();
+if (!hadCache) { renderGlance(); renderColumns(); }
+// Always do a background fetch on load to keep data fresh
+refreshFromSheet();
 initViewTabs();
 initRefreshButton();
 </script>
 
 here is the code instead of customer segment as a tab i want ENT, MID, SMB as a tab
+
