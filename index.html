@@ -595,7 +595,9 @@ function renderColumns() {
   const fd = getFilteredData();
   const el = document.getElementById('sections');
   const cols = fd.length || 1;
-  const gridStyle = `grid-template-columns:repeat(${cols},minmax(0,1fr))`;
+  // Cap each column at 480px so single/double product views don't stretch to full width
+  const colWidth = cols === 1 ? 'minmax(0,480px)' : cols === 2 ? 'minmax(0,560px)' : 'minmax(0,1fr)';
+  const gridStyle = `grid-template-columns:repeat(${cols},${colWidth})`;
   // Row 0 — product headers
   const headerCols = fd.map(prod => {
     const hasAnyWeekly = prod.metrics.some(m => m.weekly);
@@ -646,6 +648,8 @@ const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0PErUtR
 // Col layout: 0=#, 1=VIN(code), 2=Product, 3=KR, 4-7=W1-W4, 8=Sep, 9-11=Sep ENT/MID/SMB, 12=Aug, 13-15=Aug ENT/MID/SMB, 16=Jul, 17-19=Jul ENT/MID/SMB, 20=Jun, 21-23=Jun ENT/MID/SMB, 28=Owner
 const MONTH_COLS = { Sep: 8, Aug: 12, Jul: 16, Jun: 20 };
 const PRODUCT_TAG = { image: '--tag-image', '360': '--tag-360', video: '--tag-video', catalog: '--tag-catalog' };
+// Default type for known products if col B is blank in the live sheet
+const PRODUCT_TYPE_DEFAULT = { image: 'VIN', '360': 'VIN', video: 'VIN' };
 function parseCSV(text) {
   const rows = [];
   let row = [], field = '', inQuotes = false;
@@ -702,7 +706,8 @@ function buildProductsFromRows(rows) {
     const owner = (row[28] || row[24] || '').trim(); // col 28 = Owner
     if (!current || current._group !== group) {
       const slug = productName.toLowerCase();
-      current = { _group: group, code: slug, name: productName, owner, type: productType, tag: PRODUCT_TAG[slug] || '--tag-image', metrics: [] };
+      const resolvedType = productType || PRODUCT_TYPE_DEFAULT[slug] || 'VIN';
+      current = { _group: group, code: slug, name: productName, owner, type: resolvedType, tag: PRODUCT_TAG[slug] || '--tag-image', metrics: [] };
       products.push(current);
     }
     const krName = cleanName(row[3]); // col 3 = KR name
@@ -806,7 +811,7 @@ async function refreshFromSheet() {
     GLANCE_PICKS = {};
     products.forEach(p => { GLANCE_PICKS[p.code] = pickGlance(p.metrics); });
     // Reset filter if current type no longer exists in fresh data
-    const freshTypes = [...new Set(DATA.map(p => p.type).filter(Boolean).sort())];
+    const freshTypes = sortedTypes();
     if (!freshTypes.includes(CURRENT_TYPE)) CURRENT_TYPE = freshTypes[0] || '';
     buildTypeFilter();
     renderGlance();
@@ -829,16 +834,25 @@ function initRefreshButton() {
   document.getElementById('refreshBtn').addEventListener('click', refreshFromSheet);
   setInterval(refreshFromSheet, 5 * 60 * 1000);
 }
+function sortedTypes() {
+  const types = [...new Set(DATA.map(p => p.type).filter(Boolean))];
+  types.sort((a, b) => {
+    if (a === 'VIN') return -1;
+    if (b === 'VIN') return 1;
+    return a.localeCompare(b);
+  });
+  return types;
+}
 function buildTypeFilter() {
   const bar = document.getElementById('typeFilter');
-  const types = [...new Set(DATA.map(p => p.type).filter(Boolean).sort())];
+  const types = sortedTypes();
   bar.innerHTML = types.map(t =>
     `<button class="type-tab${t === CURRENT_TYPE ? ' active' : ''}" type="button" data-type="${t}">${t}</button>`
   ).join('');
 }
 function initTypeFilter() {
-  // Set default to first available type
-  const types = [...new Set(DATA.map(p => p.type).filter(Boolean).sort())];
+  // Set default to VIN if available, else first available type
+  const types = sortedTypes();
   if (!types.includes(CURRENT_TYPE)) CURRENT_TYPE = types[0] || '';
   buildTypeFilter();
   document.getElementById('typeFilter').addEventListener('click', e => {
