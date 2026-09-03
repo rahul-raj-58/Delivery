@@ -316,100 +316,10 @@
   <div id="sections"></div>
 </div>
 <script>
-const MONTHS = ['May','Jun','Jul','Aug'];
-// DATA_START
-let DATA = [
-  {
-    code: "image", name: "Image", owner: "Ranbir Manoranjan", tag: "--tag-image",
-    metrics: [
-      { id:"A1", name:"TAT (P95)", type:"hrs", dir:"down",
-        weekly:[5.89, 5.01, 9.15, 6.95],
-        monthly:{May: 9.07, Jun: 13.39, Jul: 6.93, Aug: 6.45},
-        seg:{May:{ENT:17.25,MID:14.64,SMB:8.32},Jun:{ENT:21.67,MID:26.79,SMB:10.15},Jul:{ENT:16.32,MID:21.52,SMB:7.04},Aug:{ENT:10.94,MID:17.27,SMB:4.23}} },
-      { id:"A2", name:"TAT (P99)", type:"hrs", dir:"down",
-        weekly:[13.01, 18.51, 22.7, 11.06],
-        monthly:{May: 37.49, Jun: 122.05, Jul: 43.06, Aug: 20.35},
-        seg:{May:{ENT:95.07,MID:286.27,SMB:15.76},Jun:{ENT:87.42,MID:340.13,SMB:74.43},Jul:{ENT:66.25,MID:544.95,SMB:13.74},Aug:{ENT:58.25,MID:141.33,SMB:14.57}} },
-      { id:"A3", name:"SLA < 6 Hrs", type:"pct", dir:"up",
-        weekly:[95.38, 97.05, 92.15, 92.97],
-        monthly:{May: 91.15, Jun: 86.44, Jul: 93.48, Aug: 94.39},
-        seg:{May:{ENT:83.23,MID:67.65,SMB:93.11},Jun:{ENT:81.67,MID:75.41,SMB:89.66},Jul:{ENT:82.05,MID:80.12,SMB:94.03},Aug:{ENT:83.53,MID:82.21,SMB:97.24}} },
-      { id:"A4", name:"P&L \u2014 Cost / Revenue", type:"pct", dir:"down",
-        weekly:[5.4, 5.88, 6.74, 6.23],
-        monthly:{May: 7.83, Jun: 7.81, Jul: 5.6, Aug: null},
-        seg:null },
-    ]
-  },
-  {
-    code: "360", name: "360", owner: "Nand Kishor", tag: "--tag-360",
-    metrics: [
-      { id:"B1", name:"TAT (P95)", type:"hrs", dir:"down",
-        weekly:[31.91, 16.73, 8.84, 6.1],
-        monthly:{May: 160.63, Jun: 150.2, Jul: 26.57, Aug: null},
-        seg:null },
-      { id:"B2", name:"TAT (P99)", type:"hrs", dir:"down",
-        weekly:[163.52, 192.45, 151.81, 66.09],
-        monthly:{May: 584.67, Jun: 338.42, Jul: 208.08, Aug: null},
-        seg:null },
-      { id:"B3", name:"SLA < 6 Hrs", type:"pct", dir:"up",
-        weekly:[91.7, 88.0, 92.6, 96.4],
-        monthly:{May: 48.0, Jun: 60.4, Jul: 86.7, Aug: null},
-        seg:null },
-      { id:"B4", name:"P&L \u2014 Cost / Revenue", type:"pct", dir:"down",
-        weekly:[2.26, 1.78, 1.99, 2.92],
-        monthly:{May: 3.21, Jun: 2.78, Jul: 1.71, Aug: null},
-        seg:null },
-      { id:"B5", name:"Fulfilment", type:"pct", dir:"up",
-        weekly:[88.24, 87.03, 84.92, 90.5],
-        monthly:{May: 88.16, Jun: 87.3, Jul: 88.24, Aug: null},
-        seg:null },
-    ]
-  },
-  {
-    code: "video", name: "Video", owner: "Nitin Kumar", tag: "--tag-video",
-    metrics: [
-      { id:"C1", name:"TAT (P95)", type:"hrs", dir:"down",
-        weekly:[35.42, 16.39, 11.77, 45.61],
-        monthly:{May: 92.69, Jun: 119.59, Jul: 29.4, Aug: 30.57},
-        seg:{Aug:{ENT:30.22,MID:29.45,SMB:36.89}} },
-      { id:"C2", name:"TAT (P99)", type:"hrs", dir:"down",
-        weekly:[163.98, 50.51, 96.85, 151.82],
-        monthly:{May: 1012.2, Jun: 520.5, Jul: 242.38, Aug: 151.57},
-        seg:{Aug:{ENT:151.09,MID:168.5,SMB:201.37}} },
-      { id:"C3", name:"P&L \u2014 Cost / Revenue", type:"pct", dir:"down",
-        weekly:[5.86, 6.12, 6.32, 4.5],
-        monthly:{May: 8.24, Jun: 5.6, Jul: 5.3, Aug: 3.51},
-        seg:null },
-      { id:"C4", name:"SLA < 12 Hrs", type:"pct", dir:"up",
-        weekly:[72.32, 89.3, 86.85, 73.86],
-        monthly:{May: 65.77, Jun: 72.97, Jul: 81.83, Aug: 80.95},
-        seg:{Aug:{ENT:81.39,MID:82.08,SMB:77.6}} },
-      { id:"C5", name:"Fulfilment", type:"pct", dir:"up",
-        weekly:[92.6, 97.4, 96.4, 96.7],
-        monthly:{May: 92.7, Jun: 92.4, Jul: 95.3, Aug: 96.0},
-        seg:{Aug:{ENT:92.44,MID:91.23,SMB:95.96}} },
-    ]
-  },
-  {
-    code: "catalog", name: "Catalog", owner: "Sumit Rana", tag: "--tag-catalog",
-    metrics: [
-      { id:"D1", name:"Live Accounts", type:"count", dir:"up",
-        weekly:[57.0, 53.0, 51.0, 50.0],
-        monthly:{May: 60.0, Jun: 61.0, Jul: 60.0, Aug: null},
-        seg:null },
-      { id:"D2", name:"Website Reviews", type:"count", dir:"neutral",
-        weekly:[206112.0, 233492.0, 230058.0, 234886.0],
-        monthly:{May: 16500.0, Jun: 302078.0, Jul: 856296.0, Aug: null},
-        seg:null },
-    ]
-  },
-];
-let GLANCE_PICKS = {
-  "image": ["A3", "A1"],
-  "360": ["B3", "B1"],
-  "video": ["C4", "C1"],
-  "catalog": ["D1", "D2"],
-};
+const MONTHS = ['Jun','Jul','Aug','Sep'];
+// DATA_START \u2014 emptied; all data loads live from Google Sheet
+let DATA = [];
+let GLANCE_PICKS = {};
 // DATA_END
 function fmt(v, type) {
   if (v == null || Number.isNaN(v)) return '—';
@@ -523,7 +433,12 @@ function buildSegPanel(m, seg) {
 function initials(name) {
   return name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
 }
+function renderEmpty() {
+  document.getElementById('glance').innerHTML = '<p style="color:var(--ink-muted);font-size:13px;margin:0">No data yet — click <strong>Refresh</strong> to load live data from the sheet.</p>';
+  document.getElementById('sections').innerHTML = '';
+}
 function renderGlance() {
+  if (!DATA.length) { renderEmpty(); return; }
   const el = document.getElementById('glance');
   el.innerHTML = DATA.map(prod => {
     const picks = GLANCE_PICKS[prod.code].map(id => prod.metrics.find(m => m.id === id));
@@ -644,7 +559,8 @@ function initViewTabs() {
 // 19 May, 20-22 ENT/MID/SMB, 23 Owner.
 const SHEET_PUBHTML = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0PErUtRrUBJqmRq-PGxpYaYr2ShfJHbyVOMjbXdCDDpw0-pPC4Fjmos2rqFa0t47WYf9ql9BRO3i_/pubhtml?gid=0&single=true';
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0PErUtRrUBJqmRq-PGxpYaYr2ShfJHbyVOMjbXdCDDpw0-pPC4Fjmos2rqFa0t47WYf9ql9BRO3i_/pub?gid=0&single=true&output=csv';
-const MONTH_COLS = { Aug: 7, Jul: 11, Jun: 15, May: 19 };
+// Col layout: 0=ID,1=Product,2=KR,3-6=Weekly(4wks), 7=Sep,8-10=Sep ENT/MID/SMB, 11=Aug,12-14=Aug ENT/MID/SMB, 15=Jul,16-18=Jul ENT/MID/SMB, 19=Jun,20-22=Jun ENT/MID/SMB, 27=Owner
+const MONTH_COLS = { Sep: 7, Aug: 11, Jul: 15, Jun: 19 };
 const PRODUCT_TAG = { image: '--tag-image', '360': '--tag-360', video: '--tag-video', catalog: '--tag-catalog' };
 function parseCSV(text) {
   const rows = [];
@@ -698,7 +614,7 @@ function buildProductsFromRows(rows) {
     if (!code) continue;
     const group = code.split('.')[0];
     const productName = (row[1] || '').trim();
-    const owner = (row[23] || '').trim();
+    const owner = (row[27] || row[23] || '').trim(); // col 27 with Sep added; fallback 23
     if (!current || current._group !== group) {
       const slug = productName.toLowerCase();
       current = { _group: group, code: slug, name: productName, owner, tag: PRODUCT_TAG[slug] || '--tag-image', metrics: [] };
