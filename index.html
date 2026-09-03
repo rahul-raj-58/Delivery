@@ -255,13 +255,13 @@
   .metric-stats .vs-label { font-size: 11px; color: var(--ink-muted); }
   .chart-card {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px;
-    padding: 8px 8px 6px; display: flex; flex-direction: column; min-height: 128px;
+    padding: 8px 8px 6px; display: flex; flex-direction: column; min-height: 100px;
   }
   .chart-title {
     font-size: 9px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
     color: var(--ink-muted); margin: 0 1px 3px;
   }
-  .chart-svg { width: 100%; height: auto; flex: 1; overflow: visible; }
+  .chart-svg { width: 100%; height: auto; max-height: 124px; flex: 1; overflow: visible; }
   .chart-val { font-size: 9px; font-weight: 600; fill: var(--ink-primary); font-family: 'IBM Plex Sans', sans-serif; }
   .chart-cat { font-size: 8px; fill: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.02em; font-family: 'IBM Plex Sans', sans-serif; }
   .chart-empty {
@@ -400,9 +400,9 @@ let GLANCE_PICKS = {
   'video': ['C3','C1'],
 };
 // DATA_END
-let CURRENT_TYPE = 'All';
+let CURRENT_TYPE = 'VIN';
 function getFilteredData() {
-  if (CURRENT_TYPE === 'All') return DATA;
+  if (!CURRENT_TYPE) return DATA;
   return DATA.filter(p => p.type === CURRENT_TYPE);
 }
 function fmt(v, type) {
@@ -806,8 +806,8 @@ async function refreshFromSheet() {
     GLANCE_PICKS = {};
     products.forEach(p => { GLANCE_PICKS[p.code] = pickGlance(p.metrics); });
     // Reset filter if current type no longer exists in fresh data
-    const freshTypes = new Set(DATA.map(p => p.type));
-    if (CURRENT_TYPE !== 'All' && !freshTypes.has(CURRENT_TYPE)) CURRENT_TYPE = 'All';
+    const freshTypes = [...new Set(DATA.map(p => p.type).filter(Boolean).sort())];
+    if (!freshTypes.includes(CURRENT_TYPE)) CURRENT_TYPE = freshTypes[0] || '';
     buildTypeFilter();
     renderGlance();
     renderColumns();
@@ -831,12 +831,15 @@ function initRefreshButton() {
 }
 function buildTypeFilter() {
   const bar = document.getElementById('typeFilter');
-  const types = ['All', ...new Set(DATA.map(p => p.type).filter(Boolean).sort())];
+  const types = [...new Set(DATA.map(p => p.type).filter(Boolean).sort())];
   bar.innerHTML = types.map(t =>
     `<button class="type-tab${t === CURRENT_TYPE ? ' active' : ''}" type="button" data-type="${t}">${t}</button>`
   ).join('');
 }
 function initTypeFilter() {
+  // Set default to first available type
+  const types = [...new Set(DATA.map(p => p.type).filter(Boolean).sort())];
+  if (!types.includes(CURRENT_TYPE)) CURRENT_TYPE = types[0] || '';
   buildTypeFilter();
   document.getElementById('typeFilter').addEventListener('click', e => {
     const btn = e.target.closest('.type-tab');
