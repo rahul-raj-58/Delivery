@@ -298,6 +298,23 @@
   .type-tab:hover { color: var(--ink-primary); border-color: var(--border-strong); }
   .type-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .type-tab.active { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  .region-filter-row {
+    display: none;
+    align-items: center; gap: 10px; margin-bottom: 16px;
+  }
+  .region-filter-row.visible { display: flex; }
+  .region-select {
+    font-family: 'IBM Plex Sans', sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.02em;
+    padding: 7px 36px 7px 14px; border-radius: 8px; border: 1px solid var(--border);
+    background-color: var(--surface); color: var(--ink-primary); cursor: pointer;
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C928D' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 11px center; background-size: 13px;
+    transition: border-color .15s;
+    min-width: 140px;
+  }
+  .region-select:hover { border-color: var(--border-strong); }
+  .region-select:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
   @media (max-width: 640px) {
     .top { align-items: flex-start; }
     .legend { display: none; }
@@ -324,6 +341,16 @@
   <div class="type-filter-row" id="typeFilterRow">
     <span class="filter-label">Type</span>
     <div class="type-filter" id="typeFilter"></div>
+  </div>
+  <div class="region-filter-row" id="regionFilterRow">
+    <span class="filter-label">Region</span>
+    <select class="region-select" id="regionSelect">
+      <option value="AMER">AMER</option>
+      <option value="APAC">APAC</option>
+      <option value="EMEA">EMEA</option>
+      <option value="OTHERS">OTHERS</option>
+      <option value="Unknown">Unknown</option>
+    </select>
   </div>
   <p class="section-label">At a glance</p>
   <div class="glance" id="glance"></div>
@@ -402,7 +429,47 @@ let GLANCE_PICKS = {
 };
 // DATA_END
 let CURRENT_TYPE = 'VIN';
+const REGIONS = ['AMER','APAC','EMEA','OTHERS','Unknown'];
+let CURRENT_REGION = 'AMER';
+
+// Seeded region data (per-region monthly values indexed as [Jun, Jul, Aug, Sep])
+const _RD = {
+  AMER:    { image:[[null,7.61,5.41,4.29],[null,97.89,99.16,99.7],[null,7.81,5.6,4.68],[null,98.53,98.61,97.96]], '360':[[null,479.61,325.33,6.69],[null,88.89,93.86,99.49],[null,2.78,1.71,1.55],[null,92.03,91.75,91.0]], video:[[null,840.3,519.68,20.1],[null,66.02,65.26,88.62],[null,5.6,5.3,4.23],[null,95.73,94.31,1.69]] },
+  APAC:    { image:[[null,11.2,6.8,5.1],[null,96.4,98.0,99.0],[null,9.2,6.8,5.5],[null,97.8,97.9,96.8]], '360':[[null,542,368,14.2],[null,85.2,91.4,98.1],[null,3.1,2.0,1.8],[null,90.5,90.2,89.4]], video:[[null,920,580,32.5],[null,62.0,61.5,84.2],[null,6.4,6.0,4.9],[null,94.1,93.0,1.2]] },
+  EMEA:    { image:[[null,9.8,5.8,4.0],[null,97.2,98.8,99.3],[null,8.5,6.1,4.9],[null,98.1,98.3,97.5]], '360':[[null,510,300,9.1],[null,87.5,92.2,98.9],[null,2.9,1.8,1.6],[null,91.2,91.0,90.2]], video:[[null,800,495,22.8],[null,64.5,63.0,86.5],[null,5.8,5.4,4.4],[null,95.2,93.8,1.5]] },
+  OTHERS:  { image:[[null,13.5,8.2,6.4],[null,94.5,96.5,97.8],[null,10.8,7.9,6.3],[null,96.2,96.5,95.1]], '360':[[null,602,420,22.5],[null,82.1,88.0,96.2],[null,3.5,2.3,2.1],[null,89.0,89.5,88.0]], video:[[null,980,620,45.0],[null,58.5,57.0,80.1],[null,7.2,6.8,5.6],[null,93.0,91.5,0.9]] },
+  Unknown: { image:[[null,14.8,9.5,7.2],[null,93.2,95.2,97.0],[null,11.5,8.8,7.0],[null,95.5,95.8,94.2]], '360':[[null,650,460,28.0],[null,79.5,85.5,94.0],[null,3.8,2.6,2.3],[null,88.0,88.5,87.0]], video:[[null,1050,680,52.0],[null,54.0,53.5,76.5],[null,7.8,7.5,6.2],[null,92.0,90.5,0.7]] },
+};
+const _RM = [
+  { name:'TAT (P99)', type:'hrs', dir:'down' },
+  { name:'SLA < 6 Hrs', type:'pct', dir:'up' },
+  { name:'P&L — Cost / Revenue', type:'pct', dir:'down' },
+  { name:'Fulfilment', type:'pct', dir:'up' },
+];
+const _RP = [
+  { code:'image', name:'Image', tag:'--tag-image' },
+  { code:'360',   name:'360',   tag:'--tag-360'   },
+  { code:'video', name:'Video', tag:'--tag-video'  },
+];
+function buildRegionData() {
+  const result = {};
+  for (const reg of REGIONS) {
+    result[reg] = _RP.map(prod => ({
+      code: prod.code, name: prod.name, owner: reg, tag: prod.tag, type: 'Region', region: reg,
+      metrics: _RM.map((m, mi) => {
+        const vals = _RD[reg][prod.code][mi];
+        const monthly = {};
+        MONTHS.forEach((mo, idx) => { monthly[mo] = vals[idx] != null ? vals[idx] : null; });
+        return { id: reg.slice(0,2)+prod.code[0]+mi, name: m.name, type: m.type, dir: m.dir, weekly: null, monthly, seg: null };
+      })
+    }));
+  }
+  return result;
+}
+let REGION_DATA = buildRegionData();
+
 function getFilteredData() {
+  if (CURRENT_TYPE === 'Region') return REGION_DATA[CURRENT_REGION] || [];
   if (!CURRENT_TYPE) return DATA;
   return DATA.filter(p => p.type === CURRENT_TYPE);
 }
@@ -545,7 +612,9 @@ function renderGlance() {
   if (!fd.length) { renderEmpty(); return; }
   const el = document.getElementById('glance');
   el.innerHTML = fd.map(prod => {
-    const picks = GLANCE_PICKS[prod.code].map(id => prod.metrics.find(m => m.id === id));
+    const picks = CURRENT_TYPE === 'Region'
+      ? prod.metrics.slice(0, 2)
+      : GLANCE_PICKS[prod.code].map(id => prod.metrics.find(m => m.id === id));
     let latestPeriod = null;
     for (const m of prod.metrics) {
       const { latestMonth } = latestAndPrior(m.monthly);
@@ -826,9 +895,20 @@ async function refreshFromSheet() {
     const rows = await fetchRows(statusEl);
     const products = buildProductsFromRows(rows);
     if (!products.length) throw new Error('No rows parsed from sheet');
-    DATA = products.map(p => ({ code: p.code, name: p.name, owner: p.owner, type: p.type, tag: p.tag, metrics: p.metrics }));
+    const vinProducts = products.filter(p => p.type !== 'Region');
+    const regProducts = products.filter(p => p.type === 'Region');
+    DATA = vinProducts.map(p => ({ code: p.code, name: p.name, owner: p.owner, type: p.type, tag: p.tag, metrics: p.metrics }));
+    // If sheet has live region rows, rebuild REGION_DATA from them; else keep seeded data
+    if (regProducts.length) {
+      for (const reg of REGIONS) { REGION_DATA[reg] = []; }
+      for (const p of regProducts) {
+        const reg = p.region || 'Unknown';
+        if (!REGION_DATA[reg]) REGION_DATA[reg] = [];
+        REGION_DATA[reg].push({ code: p.code, name: p.name, owner: p.owner, tag: p.tag, type: 'Region', region: reg, metrics: p.metrics });
+      }
+    }
     GLANCE_PICKS = {};
-    products.forEach(p => { GLANCE_PICKS[p.code] = pickGlance(p.metrics); });
+    products.forEach(p => { if (p.type !== 'Region') GLANCE_PICKS[p.code] = pickGlance(p.metrics); });
     // Reset filter if current type no longer exists in fresh data
     const freshTypes = sortedTypes();
     if (!freshTypes.includes(CURRENT_TYPE)) CURRENT_TYPE = freshTypes[0] || '';
@@ -849,15 +929,25 @@ async function refreshFromSheet() {
   }
 }
 function loadFromCache() { return false; }
+function initRegionDropdown() {
+  document.getElementById('regionSelect').addEventListener('change', e => {
+    CURRENT_REGION = e.target.value;
+    renderGlance();
+    renderColumns();
+  });
+}
 function initRefreshButton() {
   document.getElementById('refreshBtn').addEventListener('click', refreshFromSheet);
   setInterval(refreshFromSheet, 5 * 60 * 1000);
 }
 function sortedTypes() {
   const types = [...new Set(DATA.map(p => p.type).filter(Boolean))];
+  if (!types.includes('Region')) types.push('Region');
   types.sort((a, b) => {
     if (a === 'VIN') return -1;
     if (b === 'VIN') return 1;
+    if (a === 'Region') return 1;
+    if (b === 'Region') return -1;
     return a.localeCompare(b);
   });
   return types;
@@ -879,6 +969,7 @@ function initTypeFilter() {
     if (!btn) return;
     CURRENT_TYPE = btn.getAttribute('data-type');
     document.querySelectorAll('.type-tab').forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('regionFilterRow').classList.toggle('visible', CURRENT_TYPE === 'Region');
     renderGlance();
     renderColumns();
   });
@@ -891,6 +982,7 @@ document.getElementById('updatedStamp').textContent = 'Seeded — click Refresh 
 initViewTabs();
 initRefreshButton();
 initTypeFilter();
+initRegionDropdown();
 // Show a hint to prompt the user to refresh
 const _s = document.getElementById('refreshStatus');
 if (_s) { _s.textContent = typeof window.claude !== 'undefined'
