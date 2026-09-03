@@ -281,6 +281,22 @@
   .seg-panels { flex: 1; position: relative; }
   .seg-panel { display: none; height: 100%; }
   .seg-panel.active { display: block; }
+  .type-filter-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  }
+  .filter-label {
+    font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); white-space: nowrap;
+  }
+  .type-filter { display: flex; gap: 6px; flex-wrap: wrap; }
+  .type-tab {
+    font-family: 'IBM Plex Sans', sans-serif; font-weight: 700; font-size: 11.5px; letter-spacing: 0.02em;
+    padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--ink-secondary); cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+  }
+  .type-tab:hover { color: var(--ink-primary); border-color: var(--border-strong); }
+  .type-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .type-tab.active { background: var(--accent); color: var(--surface); border-color: var(--accent); }
   @media (max-width: 640px) {
     .top { align-items: flex-start; }
     .legend { display: none; }
@@ -291,7 +307,7 @@
     <div>
       <p class="eyebrow">Ops Review</p>
       <h1>Production Ops Scorecard</h1>
-      <p class="sub">Turnaround, SLA, fulfilment and unit-cost trends across Image, 360, Video and Catalog.</p>
+      <p class="sub">Turnaround, SLA, fulfilment and unit-cost trends across Image, 360 and Video.</p>
       <p class="updated-chip">
         <span class="dot-live"></span>Last updated <span id="updatedStamp"><!-- UPDATED_START -->20 Aug 2026, 11:48 UTC<!-- UPDATED_END --></span>
         <button id="refreshBtn" class="refresh-btn" type="button"><span class="refresh-icon">⟳</span>Refresh</button>
@@ -303,6 +319,10 @@
       <span class="item"><span class="dot" style="background:var(--bad)"></span>Slipped vs. prior period</span>
       <span class="item"><span class="dot" style="background:var(--ink-muted)"></span>Volume metric, no judgement</span>
     </div>
+  </div>
+  <div class="type-filter-row" id="typeFilterRow">
+    <span class="filter-label">Type</span>
+    <div class="type-filter" id="typeFilter"></div>
   </div>
   <p class="section-label">At a glance</p>
   <div class="glance" id="glance"></div>
@@ -319,7 +339,7 @@
 const MONTHS = ['Jun','Jul','Aug','Sep'];
 // DATA_START \u2014 seeded from sheet screenshot; overwritten on Refresh
 let DATA = [
-  { code:'image', name:'Image', owner:'', tag:'--tag-image', metrics:[
+  { code:'image', name:'Image', owner:'', tag:'--tag-image', type:'VIN', metrics:[
     { id:'A1', name:'TAT (P99)', type:'hrs', dir:'down',
       weekly:[3.66,7.61,4.07,3.96],
       monthly:{Jun:null,Jul:10.49,Aug:5.41,Sep:4.29},
@@ -337,7 +357,7 @@ let DATA = [
       monthly:{Jun:null,Jul:98.53,Aug:98.61,Sep:97.96},
       seg:{Sep:{ENT:95.2,MID:90.46,SMB:98.79},Aug:{ENT:97.49,MID:96.05,SMB:99.48},Jul:{ENT:98.04,MID:96.26,SMB:null}} },
   ]},
-  { code:'360', name:'360', owner:'', tag:'--tag-360', metrics:[
+  { code:'360', name:'360', owner:'', tag:'--tag-360', type:'VIN', metrics:[
     { id:'B1', name:'TAT (P99)', type:'hrs', dir:'down',
       weekly:[289.75,198.5,148.4,26.2],
       monthly:{Jun:null,Jul:479.61,Aug:325.33,Sep:6.69},
@@ -355,7 +375,7 @@ let DATA = [
       monthly:{Jun:null,Jul:92.03,Aug:91.75,Sep:91},
       seg:{Sep:{ENT:91.66,MID:86.62,SMB:94.41},Aug:{ENT:92.19,MID:87.67,SMB:91.98},Jul:{ENT:92.75,MID:87.4,SMB:null}} },
   ]},
-  { code:'video', name:'Video', owner:'', tag:'--tag-video', metrics:[
+  { code:'video', name:'Video', owner:'', tag:'--tag-video', type:'VIN', metrics:[
     { id:'C1', name:'TAT (P99)', type:'hrs', dir:'down',
       weekly:[50.51,488.79,185,58.72],
       monthly:{Jun:null,Jul:840.3,Aug:519.68,Sep:20.1},
@@ -380,6 +400,11 @@ let GLANCE_PICKS = {
   'video': ['C3','C1'],
 };
 // DATA_END
+let CURRENT_TYPE = 'All';
+function getFilteredData() {
+  if (CURRENT_TYPE === 'All') return DATA;
+  return DATA.filter(p => p.type === CURRENT_TYPE);
+}
 function fmt(v, type) {
   if (v == null || Number.isNaN(v)) return '—';
   if (type === 'pct') return v.toFixed(1) + '%';
@@ -501,9 +526,10 @@ function renderEmpty() {
   document.getElementById('sections').innerHTML = '';
 }
 function renderGlance() {
-  if (!DATA.length) { renderEmpty(); return; }
+  const fd = getFilteredData();
+  if (!fd.length) { renderEmpty(); return; }
   const el = document.getElementById('glance');
-  el.innerHTML = DATA.map(prod => {
+  el.innerHTML = fd.map(prod => {
     const picks = GLANCE_PICKS[prod.code].map(id => prod.metrics.find(m => m.id === id));
     let latestPeriod = null;
     for (const m of prod.metrics) {
@@ -558,21 +584,20 @@ function buildMetricCard(m) {
     <div class="view-panel" data-view="smb">${buildSegPanel(m, 'SMB')}</div>
   </div>`;
 }
-// Canonical metric order — determines which row each metric type appears in
-// Each slot: default matcher used for Image/360/Video; per-product key overrides for Catalog.
-// This lets Catalog's Live Accounts sit beside TAT P95, and Website Reviews beside TAT P99.
+// Canonical metric order — row slot for each metric type across Image / 360 / Video
 const METRIC_ORDER = [
-  { default: m => m.name.includes('P99'),
-    catalog: m => m.name.toLowerCase().includes('live') },
-  { default: m => m.name.toUpperCase().includes('SLA'),
-    catalog: m => m.name.toLowerCase().includes('review') },
+  { default: m => m.name.includes('P99') },
+  { default: m => m.name.toUpperCase().includes('SLA') },
   { default: m => m.name.includes('P&L') || m.name.toLowerCase().includes('cost') },
   { default: m => /fulfi(l|ll)ment/i.test(m.name) },
 ];
 function renderColumns() {
+  const fd = getFilteredData();
   const el = document.getElementById('sections');
+  const cols = fd.length || 1;
+  const gridStyle = `grid-template-columns:repeat(${cols},minmax(0,1fr))`;
   // Row 0 — product headers
-  const headerCols = DATA.map(prod => {
+  const headerCols = fd.map(prod => {
     const hasAnyWeekly = prod.metrics.some(m => m.weekly);
     return `<div class="product-col">
       <div class="product-head">
@@ -587,24 +612,20 @@ function renderColumns() {
       </div>
     </div>`;
   }).join('');
-  // Rows 1-N — one band per slot; each product uses its own matcher override if defined
+  // Rows 1-N — one band per slot
   const bands = METRIC_ORDER.map(slot => {
-    const cells = DATA.map(prod => {
-      const matcher = slot[prod.code] || slot.default;
+    const cells = fd.map(prod => {
+      const matcher = slot.default;
       if (!matcher) return `<div class="metric-cell empty"></div>`;
       const m = prod.metrics.find(matcher);
       return m
         ? `<div class="metric-cell">${buildMetricCard(m)}</div>`
         : `<div class="metric-cell empty"></div>`;
     }).join('');
-    // Skip row if every cell is empty
-    const hasAny = DATA.some(prod => {
-      const matcher = slot[prod.code] || slot.default;
-      return matcher && prod.metrics.find(matcher);
-    });
-    return hasAny ? `<div class="metric-band">${cells}</div>` : '';
+    const hasAny = fd.some(prod => slot.default && prod.metrics.find(slot.default));
+    return hasAny ? `<div class="metric-band" style="${gridStyle}">${cells}</div>` : '';
   }).join('');
-  el.innerHTML = `<div class="product-columns">${headerCols}</div>${bands}`;
+  el.innerHTML = `<div class="product-columns" style="${gridStyle}">${headerCols}</div>${bands}`;
 }
 function initViewTabs() {
   const bar = document.getElementById('viewTabs');
@@ -676,11 +697,12 @@ function buildProductsFromRows(rows) {
     const code = (row[0] || '').trim();
     if (!code) continue;
     const group = code.split('.')[0];
-    const productName = (row[2] || '').trim(); // col 2 = Product name (col 1 = VIN code)
+    const productType = (row[1] || '').trim(); // col 1 = Type code (e.g. VIN)
+    const productName = (row[2] || '').trim(); // col 2 = Product name
     const owner = (row[28] || row[24] || '').trim(); // col 28 = Owner
     if (!current || current._group !== group) {
       const slug = productName.toLowerCase();
-      current = { _group: group, code: slug, name: productName, owner, tag: PRODUCT_TAG[slug] || '--tag-image', metrics: [] };
+      current = { _group: group, code: slug, name: productName, owner, type: productType, tag: PRODUCT_TAG[slug] || '--tag-image', metrics: [] };
       products.push(current);
     }
     const krName = cleanName(row[3]); // col 3 = KR name
@@ -780,13 +802,13 @@ async function refreshFromSheet() {
     const rows = await fetchRows(statusEl);
     const products = buildProductsFromRows(rows);
     if (!products.length) throw new Error('No rows parsed from sheet');
-    // Strip P&L — Cost / Revenue from Catalog (not tracked here)
-    products.forEach(p => {
-      if (p.code === 'catalog') p.metrics = p.metrics.filter(m => !m.name.includes('P&L'));
-    });
-    DATA = products.map(p => ({ code: p.code, name: p.name, owner: p.owner, tag: p.tag, metrics: p.metrics }));
+    DATA = products.map(p => ({ code: p.code, name: p.name, owner: p.owner, type: p.type, tag: p.tag, metrics: p.metrics }));
     GLANCE_PICKS = {};
     products.forEach(p => { GLANCE_PICKS[p.code] = pickGlance(p.metrics); });
+    // Reset filter if current type no longer exists in fresh data
+    const freshTypes = new Set(DATA.map(p => p.type));
+    if (CURRENT_TYPE !== 'All' && !freshTypes.has(CURRENT_TYPE)) CURRENT_TYPE = 'All';
+    buildTypeFilter();
     renderGlance();
     renderColumns();
     const stamp = new Date().toLocaleString('en-GB', {
@@ -805,8 +827,25 @@ async function refreshFromSheet() {
 function loadFromCache() { return false; }
 function initRefreshButton() {
   document.getElementById('refreshBtn').addEventListener('click', refreshFromSheet);
-  // Auto-refresh every 1 hour
   setInterval(refreshFromSheet, 5 * 60 * 1000);
+}
+function buildTypeFilter() {
+  const bar = document.getElementById('typeFilter');
+  const types = ['All', ...new Set(DATA.map(p => p.type).filter(Boolean).sort())];
+  bar.innerHTML = types.map(t =>
+    `<button class="type-tab${t === CURRENT_TYPE ? ' active' : ''}" type="button" data-type="${t}">${t}</button>`
+  ).join('');
+}
+function initTypeFilter() {
+  buildTypeFilter();
+  document.getElementById('typeFilter').addEventListener('click', e => {
+    const btn = e.target.closest('.type-tab');
+    if (!btn) return;
+    CURRENT_TYPE = btn.getAttribute('data-type');
+    document.querySelectorAll('.type-tab').forEach(b => b.classList.toggle('active', b === btn));
+    renderGlance();
+    renderColumns();
+  });
 }
 // Clear any stale cache
 try { localStorage.removeItem('ops_cache'); } catch(_) {}
@@ -815,6 +854,7 @@ renderColumns();
 document.getElementById('updatedStamp').textContent = 'Seeded — click Refresh for live data';
 initViewTabs();
 initRefreshButton();
+initTypeFilter();
 // Show a hint to prompt the user to refresh
 const _s = document.getElementById('refreshStatus');
 if (_s) { _s.textContent = typeof window.claude !== 'undefined'
