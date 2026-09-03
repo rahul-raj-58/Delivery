@@ -317,9 +317,68 @@
 </div>
 <script>
 const MONTHS = ['Jun','Jul','Aug','Sep'];
-// DATA_START \u2014 emptied; all data loads live from Google Sheet
-let DATA = [];
-let GLANCE_PICKS = {};
+// DATA_START \u2014 seeded from sheet screenshot; overwritten on Refresh
+let DATA = [
+  { code:'image', name:'Image', owner:'', tag:'--tag-image', metrics:[
+    { id:'A1', name:'TAT (P99)', type:'hrs', dir:'down',
+      weekly:[3.66,7.61,4.07,3.96],
+      monthly:{Jun:null,Jul:10.49,Aug:5.41,Sep:4.29},
+      seg:{Sep:{ENT:7.96,MID:9.86,SMB:3.82},Aug:{ENT:194.38,MID:28.03,SMB:3.57},Jul:{ENT:122.41,MID:146.28,SMB:null}} },
+    { id:'A2', name:'SLA < 6 Hrs', type:'pct', dir:'up',
+      weekly:[99.49,98.36,99.41,99.59],
+      monthly:{Jun:null,Jul:97.89,Aug:99.16,Sep:99.7},
+      seg:{Sep:{ENT:97.1,MID:93.49,SMB:100},Aug:{ENT:92.5,MID:89.89,SMB:99.52},Jul:{ENT:91.38,MID:93.91,SMB:null}} },
+    { id:'A3', name:'P&L \u2014 Cost / Revenue', type:'pct', dir:'down',
+      weekly:[6.15,7.73,7.16,3.75],
+      monthly:{Jun:null,Jul:7.81,Aug:5.6,Sep:4.68},
+      seg:{Sep:{ENT:3.45,MID:0.36,SMB:0.31},Aug:{ENT:3.88,MID:0.37,SMB:0.42},Jul:{ENT:5.37,MID:0.48,SMB:null}} },
+    { id:'A4', name:'Fulfilment', type:'pct', dir:'up',
+      weekly:[98.33,97.59,97.79,98.32],
+      monthly:{Jun:null,Jul:98.53,Aug:98.61,Sep:97.96},
+      seg:{Sep:{ENT:95.2,MID:90.46,SMB:98.79},Aug:{ENT:97.49,MID:96.05,SMB:99.48},Jul:{ENT:98.04,MID:96.26,SMB:null}} },
+  ]},
+  { code:'360', name:'360', owner:'', tag:'--tag-360', metrics:[
+    { id:'B1', name:'TAT (P99)', type:'hrs', dir:'down',
+      weekly:[289.75,198.5,148.4,26.2],
+      monthly:{Jun:null,Jul:479.61,Aug:325.33,Sep:6.69},
+      seg:{Sep:{ENT:6.01,MID:23.44,SMB:6.9},Aug:{ENT:325.52,MID:427.72,SMB:218.93},Jul:{ENT:378.52,MID:1040.48,SMB:null}} },
+    { id:'B2', name:'SLA < 6 Hrs', type:'pct', dir:'up',
+      weekly:[93.96,78.23,97.28,98.84],
+      monthly:{Jun:null,Jul:88.89,Aug:93.86,Sep:99.49},
+      seg:{Sep:{ENT:99.71,MID:97.42,SMB:100},Aug:{ENT:94.2,MID:89.73,SMB:92.58},Jul:{ENT:89.81,MID:80.36,SMB:null}} },
+    { id:'B3', name:'P&L \u2014 Cost / Revenue', type:'pct', dir:'down',
+      weekly:[2.06,3.12,2.62,1.21],
+      monthly:{Jun:null,Jul:2.78,Aug:1.71,Sep:1.55},
+      seg:{Sep:{ENT:1.2,MID:0.13,SMB:0.1},Aug:{ENT:1.46,MID:0.15,SMB:0.16},Jul:{ENT:2.79,MID:0.3,SMB:null}} },
+    { id:'B4', name:'Fulfilment', type:'pct', dir:'up',
+      weekly:[92.27,91.51,92.46,90.48],
+      monthly:{Jun:null,Jul:92.03,Aug:91.75,Sep:91},
+      seg:{Sep:{ENT:91.66,MID:86.62,SMB:94.41},Aug:{ENT:92.19,MID:87.67,SMB:91.98},Jul:{ENT:92.75,MID:87.4,SMB:null}} },
+  ]},
+  { code:'video', name:'Video', owner:'', tag:'--tag-video', metrics:[
+    { id:'C1', name:'TAT (P99)', type:'hrs', dir:'down',
+      weekly:[50.51,488.79,185,58.72],
+      monthly:{Jun:null,Jul:840.3,Aug:519.68,Sep:20.1},
+      seg:{Sep:{ENT:16.97,MID:31.44,SMB:20.9},Aug:{ENT:350.54,MID:375.3,SMB:589.8},Jul:{ENT:855.66,MID:594.18,SMB:null}} },
+    { id:'C2', name:'P&L \u2014 Cost / Revenue', type:'pct', dir:'down',
+      weekly:[6.5,7.7,5.16,3.87],
+      monthly:{Jun:null,Jul:5.6,Aug:5.3,Sep:4.23},
+      seg:{Sep:{ENT:2.62,MID:0.43,SMB:0.84},Aug:{ENT:3.39,MID:0.48,SMB:0.97},Jul:{ENT:4.85,MID:0.83,SMB:null}} },
+    { id:'C3', name:'SLA < 8 Hrs', type:'pct', dir:'up',
+      weekly:[89.3,81.58,70.91,77.29],
+      monthly:{Jun:null,Jul:66.02,Aug:65.26,Sep:88.62},
+      seg:{Sep:{ENT:91.98,MID:71.55,SMB:84.72},Aug:{ENT:69.6,MID:66.47,SMB:56.78},Jul:{ENT:70.88,MID:68.84,SMB:null}} },
+    { id:'C4', name:'Fulfilment', type:'pct', dir:'up',
+      weekly:null,
+      monthly:{Jun:null,Jul:95.73,Aug:94.31,Sep:1.69},
+      seg:{Sep:{ENT:90.13,MID:84.35,SMB:96.72},Aug:{ENT:88.11,MID:90.15,SMB:93.89},Jul:{ENT:94.82,MID:91.33,SMB:null}} },
+  ]},
+];
+let GLANCE_PICKS = {
+  'image': ['A2','A1'],
+  '360':   ['B2','B1'],
+  'video': ['C3','C1'],
+};
 // DATA_END
 function fmt(v, type) {
   if (v == null || Number.isNaN(v)) return '—';
@@ -423,7 +482,7 @@ function buildSegPanel(m, seg) {
   if (!m.seg) {
     return `<div class="chart-card"><p class="chart-title">${seg} trend</p>${emptyState('No ' + seg + ' split reported for this KR')}</div>`;
   }
-  const cats = MONTHS.filter(mo => m.seg[mo] && m.seg[mo][seg] != null);
+  const cats = MONTHS.filter(mo => m.seg && m.seg[mo] && m.seg[mo][seg] != null);
   const vals = cats.map(mo => m.seg[mo][seg]);
   if (cats.length < 1) {
     return `<div class="chart-card"><p class="chart-title">${seg} trend</p>${emptyState('No ' + seg + ' data available')}</div>`;
@@ -563,8 +622,8 @@ function initViewTabs() {
 // 19 May, 20-22 ENT/MID/SMB, 23 Owner.
 const SHEET_PUBHTML = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0PErUtRrUBJqmRq-PGxpYaYr2ShfJHbyVOMjbXdCDDpw0-pPC4Fjmos2rqFa0t47WYf9ql9BRO3i_/pubhtml?gid=0&single=true';
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0PErUtRrUBJqmRq-PGxpYaYr2ShfJHbyVOMjbXdCDDpw0-pPC4Fjmos2rqFa0t47WYf9ql9BRO3i_/pub?gid=0&single=true&output=csv';
-// Col layout: 0=ID,1=Product,2=KR,3-6=Weekly(4wks), 7=Sep,8-10=Sep ENT/MID/SMB, 11=Aug,12-14=Aug ENT/MID/SMB, 15=Jul,16-18=Jul ENT/MID/SMB, 19=Jun,20-22=Jun ENT/MID/SMB, 27=Owner
-const MONTH_COLS = { Sep: 7, Aug: 11, Jul: 15, Jun: 19 };
+// Col layout: 0=#, 1=VIN(code), 2=Product, 3=KR, 4-7=W1-W4, 8=Sep, 9-11=Sep ENT/MID/SMB, 12=Aug, 13-15=Aug ENT/MID/SMB, 16=Jul, 17-19=Jul ENT/MID/SMB, 20=Jun, 21-23=Jun ENT/MID/SMB, 28=Owner
+const MONTH_COLS = { Sep: 8, Aug: 12, Jul: 16, Jun: 20 };
 const PRODUCT_TAG = { image: '--tag-image', '360': '--tag-360', video: '--tag-video', catalog: '--tag-catalog' };
 function parseCSV(text) {
   const rows = [];
@@ -617,16 +676,16 @@ function buildProductsFromRows(rows) {
     const code = (row[0] || '').trim();
     if (!code) continue;
     const group = code.split('.')[0];
-    const productName = (row[1] || '').trim();
-    const owner = (row[27] || row[23] || '').trim(); // col 27 with Sep added; fallback 23
+    const productName = (row[2] || '').trim(); // col 2 = Product name (col 1 = VIN code)
+    const owner = (row[28] || row[24] || '').trim(); // col 28 = Owner
     if (!current || current._group !== group) {
       const slug = productName.toLowerCase();
       current = { _group: group, code: slug, name: productName, owner, tag: PRODUCT_TAG[slug] || '--tag-image', metrics: [] };
       products.push(current);
     }
-    const krName = cleanName(row[2]);
+    const krName = cleanName(row[3]); // col 3 = KR name
     const { type, dir } = classifyMetric(krName);
-    const weeklyRaw = [toNum(row[3]), toNum(row[4]), toNum(row[5]), toNum(row[6])];
+    const weeklyRaw = [toNum(row[4]), toNum(row[5]), toNum(row[6]), toNum(row[7])]; // cols 4-7 = W1-W4
     const weekly = weeklyRaw.every(v => v == null) ? null : [weeklyRaw[3], weeklyRaw[2], weeklyRaw[1], weeklyRaw[0]];
     const monthly = {};
     MONTHS.forEach(mo => { monthly[mo] = toNum(row[MONTH_COLS[mo]]); });
@@ -634,7 +693,7 @@ function buildProductsFromRows(rows) {
     MONTHS.forEach(mo => {
       const base = MONTH_COLS[mo];
       const ent = toNum(row[base + 1]), mid = toNum(row[base + 2]), smb = toNum(row[base + 3]);
-      if (ent != null && mid != null && smb != null) seg[mo] = { ENT: ent, MID: mid, SMB: smb };
+      if (ent != null || mid != null || smb != null) seg[mo] = { ENT: ent, MID: mid, SMB: smb };
     });
     if (!Object.keys(seg).length) seg = null;
     current.metrics.push({ id: code.replace('.', ''), name: krName, type, dir, weekly, monthly, seg });
@@ -753,16 +812,12 @@ function initRefreshButton() {
 try { localStorage.removeItem('ops_cache'); } catch(_) {}
 renderGlance();
 renderColumns();
+document.getElementById('updatedStamp').textContent = 'Seeded — click Refresh for live data';
 initViewTabs();
 initRefreshButton();
-// Auto-fetch only when opened locally (not in Artifact preview — consent dialog needs explicit user action)
-if (typeof window.claude === 'undefined') {
-  document.getElementById('updatedStamp').textContent = 'Loading…';
-  refreshFromSheet();
-} else {
-  document.getElementById('updatedStamp').textContent = '—';
-  // Show a hint in the status bar
-  const s = document.getElementById('refreshStatus');
-  if (s) { s.textContent = 'Click Refresh — Claude will ask permission to fetch your sheet data. Click Allow when prompted.'; }
-}
+// Show a hint to prompt the user to refresh
+const _s = document.getElementById('refreshStatus');
+if (_s) { _s.textContent = typeof window.claude !== 'undefined'
+  ? 'Showing last known data — click Refresh, then Allow when Claude asks permission to fetch live sheet data.'
+  : 'Showing last known data — click Refresh to fetch live data from the sheet.'; }
 </script>
