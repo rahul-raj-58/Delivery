@@ -454,78 +454,50 @@ const REGION_PRODUCTS = [
       OTHERS:  {monthly:{Jun:69.23,Jul:100,Aug:97.38,Sep:100},      seg:{Sep:{ENT:100,MID:null,SMB:100},        Aug:{ENT:95.48,MID:null,SMB:99.91},  Jul:{ENT:100,MID:null,SMB:null},     Jun:{ENT:41.67,MID:100,SMB:85.71}}},
       Unknown: {monthly:{Jun:94.41,Jul:94.8,Aug:99.2,Sep:null},     seg:{Sep:{ENT:100,MID:null,SMB:null},       Aug:{ENT:100,MID:null,SMB:100},       Jul:{ENT:100,MID:null,SMB:null},     Jun:{ENT:99.7,MID:91.67,SMB:100}}},
     }},
-    { id:'RA3', name:'P&L — Cost / Revenue', type:'pct', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:7.81,Aug:5.6,Sep:4.68},seg:null},   APAC:{monthly:{Jun:null,Jul:9.2,Aug:6.8,Sep:5.5},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:8.5,Aug:6.1,Sep:4.9},seg:null},     OTHERS:{monthly:{Jun:null,Jul:10.8,Aug:7.9,Sep:6.3},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:11.5,Aug:8.8,Sep:7.0},seg:null},
-    }},
-    { id:'RA4', name:'Fulfilment', type:'pct', dir:'up', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:98.53,Aug:98.61,Sep:97.96},seg:null},  APAC:{monthly:{Jun:null,Jul:97.8,Aug:97.9,Sep:96.8},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:98.1,Aug:98.3,Sep:97.5},seg:null},     OTHERS:{monthly:{Jun:null,Jul:96.2,Aug:96.5,Sep:95.1},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:95.5,Aug:95.8,Sep:94.2},seg:null},
-    }},
+    // P&L and Fulfilment region breakdown not yet in sheet — regionData left empty
+    { id:'RA3', name:'P&L — Cost / Revenue', type:'pct', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{} },
+    { id:'RA4', name:'Fulfilment',            type:'pct', dir:'up',   weekly:null, monthly:{}, seg:null, regionData:{} },
   ]},
+  // 360 and Video region breakdown not yet in sheet — regionData left empty on all metrics
   { code:'360', name:'360', owner:'', tag:'--tag-360', type:'Region', metrics:[
-    { id:'RB1', name:'TAT (P99)', type:'hrs', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:479.61,Aug:325.33,Sep:6.69},seg:null},  APAC:{monthly:{Jun:null,Jul:542,Aug:368,Sep:14.2},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:510,Aug:300,Sep:9.1},seg:null},          OTHERS:{monthly:{Jun:null,Jul:602,Aug:420,Sep:22.5},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:650,Aug:460,Sep:28.0},seg:null},
-    }},
-    { id:'RB2', name:'SLA < 6 Hrs', type:'pct', dir:'up', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:88.89,Aug:93.86,Sep:99.49},seg:null},  APAC:{monthly:{Jun:null,Jul:85.2,Aug:91.4,Sep:98.1},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:87.5,Aug:92.2,Sep:98.9},seg:null},     OTHERS:{monthly:{Jun:null,Jul:82.1,Aug:88.0,Sep:96.2},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:79.5,Aug:85.5,Sep:94.0},seg:null},
-    }},
-    { id:'RB3', name:'P&L — Cost / Revenue', type:'pct', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:2.78,Aug:1.71,Sep:1.55},seg:null},  APAC:{monthly:{Jun:null,Jul:3.1,Aug:2.0,Sep:1.8},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:2.9,Aug:1.8,Sep:1.6},seg:null},     OTHERS:{monthly:{Jun:null,Jul:3.5,Aug:2.3,Sep:2.1},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:3.8,Aug:2.6,Sep:2.3},seg:null},
-    }},
-    { id:'RB4', name:'Fulfilment', type:'pct', dir:'up', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:92.03,Aug:91.75,Sep:91.0},seg:null},  APAC:{monthly:{Jun:null,Jul:90.5,Aug:90.2,Sep:89.4},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:91.2,Aug:91.0,Sep:90.2},seg:null},    OTHERS:{monthly:{Jun:null,Jul:89.0,Aug:89.5,Sep:88.0},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:88.0,Aug:88.5,Sep:87.0},seg:null},
-    }},
+    { id:'RB1', name:'TAT (P99)',              type:'hrs', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{} },
+    { id:'RB2', name:'SLA < 6 Hrs',           type:'pct', dir:'up',   weekly:null, monthly:{}, seg:null, regionData:{} },
+    { id:'RB3', name:'P&L — Cost / Revenue',  type:'pct', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{} },
+    { id:'RB4', name:'Fulfilment',             type:'pct', dir:'up',   weekly:null, monthly:{}, seg:null, regionData:{} },
   ]},
   { code:'video', name:'Video', owner:'', tag:'--tag-video', type:'Region', metrics:[
-    { id:'RC1', name:'TAT (P99)', type:'hrs', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:840.3,Aug:519.68,Sep:20.1},seg:null},  APAC:{monthly:{Jun:null,Jul:920,Aug:580,Sep:32.5},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:800,Aug:495,Sep:22.8},seg:null},        OTHERS:{monthly:{Jun:null,Jul:980,Aug:620,Sep:45.0},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:1050,Aug:680,Sep:52.0},seg:null},
-    }},
-    { id:'RC2', name:'SLA < 8 Hrs', type:'pct', dir:'up', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:66.02,Aug:65.26,Sep:88.62},seg:null},  APAC:{monthly:{Jun:null,Jul:62.0,Aug:61.5,Sep:84.2},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:64.5,Aug:63.0,Sep:86.5},seg:null},     OTHERS:{monthly:{Jun:null,Jul:58.5,Aug:57.0,Sep:80.1},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:54.0,Aug:53.5,Sep:76.5},seg:null},
-    }},
-    { id:'RC3', name:'P&L — Cost / Revenue', type:'pct', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:5.6,Aug:5.3,Sep:4.23},seg:null},  APAC:{monthly:{Jun:null,Jul:6.4,Aug:6.0,Sep:4.9},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:5.8,Aug:5.4,Sep:4.4},seg:null},   OTHERS:{monthly:{Jun:null,Jul:7.2,Aug:6.8,Sep:5.6},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:7.8,Aug:7.5,Sep:6.2},seg:null},
-    }},
-    { id:'RC4', name:'Fulfilment', type:'pct', dir:'up', weekly:null, monthly:{}, seg:null, regionData:{
-      AMER:{monthly:{Jun:null,Jul:95.73,Aug:94.31,Sep:1.69},seg:null},  APAC:{monthly:{Jun:null,Jul:94.1,Aug:93.0,Sep:1.2},seg:null},
-      EMEA:{monthly:{Jun:null,Jul:95.2,Aug:93.8,Sep:1.5},seg:null},     OTHERS:{monthly:{Jun:null,Jul:93.0,Aug:91.5,Sep:0.9},seg:null},
-      Unknown:{monthly:{Jun:null,Jul:92.0,Aug:90.5,Sep:0.7},seg:null},
-    }},
+    { id:'RC1', name:'TAT (P99)',              type:'hrs', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{} },
+    { id:'RC2', name:'SLA < 8 Hrs',           type:'pct', dir:'up',   weekly:null, monthly:{}, seg:null, regionData:{} },
+    { id:'RC3', name:'P&L — Cost / Revenue',  type:'pct', dir:'down', weekly:null, monthly:{}, seg:null, regionData:{} },
+    { id:'RC4', name:'Fulfilment',             type:'pct', dir:'up',   weekly:null, monthly:{}, seg:null, regionData:{} },
   ]},
 ];
 
-// Project the selected region's values into each metric's monthly/seg fields
+// Project the selected region's values. Metrics with no real data for that region are omitted.
+// Products where all metrics are empty are omitted entirely — no false data is shown.
 function getFilteredData() {
   if (CURRENT_TYPE === 'Region') {
     const reg = CURRENT_REGION;
-    return REGION_PRODUCTS.map(prod => ({
-      code: prod.code, name: prod.name, owner: reg, tag: prod.tag, type: 'Region',
-      metrics: prod.metrics.map(m => {
+    const result = [];
+    for (const prod of REGION_PRODUCTS) {
+      const metrics = [];
+      for (const m of prod.metrics) {
         const rd = m.regionData && m.regionData[reg];
-        return {
+        if (!rd) continue;
+        const monthly = rd.monthly || {};
+        // Skip metric if every month value is null (no data in sheet yet)
+        if (Object.values(monthly).every(v => v == null)) continue;
+        metrics.push({
           id: m.id, name: m.name, type: m.type, dir: m.dir, weekly: null,
-          monthly: rd ? rd.monthly : {Jun:null,Jul:null,Aug:null,Sep:null},
-          seg: rd ? rd.seg : null,
-        };
-      })
-    }));
+          monthly, seg: rd.seg || null,
+        });
+      }
+      // Only include product if at least one metric has data
+      if (metrics.length > 0) {
+        result.push({ code: prod.code, name: prod.name, owner: reg, tag: prod.tag, type: 'Region', metrics });
+      }
+    }
+    return result;
   }
   if (!CURRENT_TYPE) return DATA;
   return DATA.filter(p => p.type === CURRENT_TYPE);
