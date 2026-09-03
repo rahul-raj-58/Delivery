@@ -665,30 +665,32 @@ function parseHTMLTable(html) {
 }
 async function fetchRows() {
   const bust = Date.now();
-  // 1. pubhtml direct (the published link the user shared)
-  try {
-    const res = await fetch(SHEET_PUBHTML + '&_t=' + bust, { cache: 'no-store' });
-    if (res.ok) { const rows = parseHTMLTable(await res.text()); if (rows.length > 1) return rows; }
-  } catch(_) {}
-  // 2. CSV direct
+  // 1. CSV direct (works when opened locally or on unrestricted hosts)
   try {
     const res = await fetch(SHEET_CSV_URL + '&_t=' + bust, { cache: 'no-store' });
     if (res.ok) { const rows = parseCSV(await res.text()); if (rows.length > 1) return rows; }
   } catch(_) {}
-  // 3. pubhtml via corsproxy.io
+  // 2. pubhtml direct
   try {
-    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(SHEET_PUBHTML), { cache: 'no-store' });
+    const res = await fetch(SHEET_PUBHTML + '&_t=' + bust, { cache: 'no-store' });
     if (res.ok) { const rows = parseHTMLTable(await res.text()); if (rows.length > 1) return rows; }
+  } catch(_) {}
+  // 3. Ask Claude to fetch the data via its backend (works inside Artifact preview where CSP blocks direct fetches)
+  try {
+    const sample = window.claude ? await claude.use('sample') : null;
+    if (sample) {
+      const statusEl = document.getElementById('refreshStatus');
+      if (statusEl) { statusEl.textContent = 'Fetching via Claude… (may take up to 30s)'; statusEl.classList.remove('error'); }
+      const result = await sample.json(
+        `Fetch this publicly published Google Sheets CSV URL and return its full contents as a JSON array of arrays of strings. The first element should be the header row. Return ONLY the raw JSON array with no markdown, no explanation, and no code blocks.\nURL: ${SHEET_CSV_URL}`
+      );
+      if (Array.isArray(result) && result.length > 1) return result;
+    }
   } catch(_) {}
   // 4. CSV via corsproxy.io
   try {
     const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(SHEET_CSV_URL), { cache: 'no-store' });
     if (res.ok) { const rows = parseCSV(await res.text()); if (rows.length > 1) return rows; }
-  } catch(_) {}
-  // 5. pubhtml via allorigins
-  try {
-    const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(SHEET_PUBHTML), { cache: 'no-store' });
-    if (res.ok) { const rows = parseHTMLTable(await res.text()); if (rows.length > 1) return rows; }
   } catch(_) {}
   throw new Error('All fetch attempts failed');
 }
