@@ -730,6 +730,25 @@ function pickGlance(metrics) {
   }
   return picks.slice(0, 2).map(m => m.id);
 }
+async function fetchCSV() {
+  const bust = '&_t=' + Date.now();
+  // Try direct first
+  try {
+    const res = await fetch(SHEET_CSV_URL + bust, { cache: 'no-store' });
+    if (res.ok) return await res.text();
+  } catch(_) {}
+  // Fallback 1: corsproxy.io
+  try {
+    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(SHEET_CSV_URL + bust), { cache: 'no-store' });
+    if (res.ok) return await res.text();
+  } catch(_) {}
+  // Fallback 2: allorigins
+  try {
+    const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(SHEET_CSV_URL + bust), { cache: 'no-store' });
+    if (res.ok) return await res.text();
+  } catch(_) {}
+  throw new Error('All fetch attempts failed');
+}
 async function refreshFromSheet() {
   const btn = document.getElementById('refreshBtn');
   const statusEl = document.getElementById('refreshStatus');
@@ -738,10 +757,8 @@ async function refreshFromSheet() {
   statusEl.textContent = '';
   statusEl.classList.remove('error');
   try {
-    const url = SHEET_CSV_URL + '&_t=' + Date.now();
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const rows = parseCSV(await res.text());
+    const csvText = await fetchCSV();
+    const rows = parseCSV(csvText);
     const products = buildProductsFromRows(rows);
     if (!products.length) throw new Error('No rows parsed from sheet');
     // Strip P&L — Cost / Revenue from Catalog (not tracked here)
@@ -758,9 +775,8 @@ async function refreshFromSheet() {
       timeZone: 'UTC', timeZoneName: 'short',
     });
     document.getElementById('updatedStamp').textContent = stamp;
-
   } catch (err) {
-    statusEl.textContent = "Couldn't fetch live data. Make sure the sheet is publicly published and try refreshing.";
+    statusEl.textContent = "Couldn't fetch live data — check that the sheet is published publicly (File → Share → Publish to web → Sheet1 → CSV).";
     statusEl.classList.add('error');
   } finally {
     btn.disabled = false;
