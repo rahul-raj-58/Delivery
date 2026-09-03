@@ -642,6 +642,7 @@ function initViewTabs() {
 // Column layout (0-indexed): 0 #, 1 Product, 2 KR, 3-6 W-1..W-4,
 // 7 Aug, 8-10 Aug ENT/MID/SMB, 11 July, 12-14 ENT/MID/SMB, 15 June, 16-18 ENT/MID/SMB,
 // 19 May, 20-22 ENT/MID/SMB, 23 Owner.
+const SHEET_PUBHTML = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0PErUtRrUBJqmRq-PGxpYaYr2ShfJHbyVOMjbXdCDDpw0-pPC4Fjmos2rqFa0t47WYf9ql9BRO3i_/pubhtml?gid=0&single=true';
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0PErUtRrUBJqmRq-PGxpYaYr2ShfJHbyVOMjbXdCDDpw0-pPC4Fjmos2rqFa0t47WYf9ql9BRO3i_/pub?gid=0&single=true&output=csv';
 const MONTH_COLS = { Aug: 7, Jul: 11, Jun: 15, May: 19 };
 const PRODUCT_TAG = { image: '--tag-image', '360': '--tag-360', video: '--tag-video', catalog: '--tag-catalog' };
@@ -730,22 +731,48 @@ function pickGlance(metrics) {
   }
   return picks.slice(0, 2).map(m => m.id);
 }
-async function fetchCSV() {
-  const bust = '&_t=' + Date.now();
-  // Try direct first
+function parseHTMLTable(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const table = doc.querySelector('table');
+  if (!table) throw new Error('No table found in pubhtml');
+  const rows = [];
+  for (const tr of table.querySelectorAll('tr')) {
+    const row = [];
+    for (const td of tr.querySelectorAll('td, th')) {
+      row.push(td.textContent.trim());
+    }
+    rows.push(row);
+  }
+  if (rows.length < 2) throw new Error('Table has no data rows');
+  return rows;
+}
+async function fetchRows() {
+  const bust = Date.now();
+  // 1. pubhtml direct (the published link the user shared)
   try {
-    const res = await fetch(SHEET_CSV_URL + bust, { cache: 'no-store' });
-    if (res.ok) return await res.text();
+    const res = await fetch(SHEET_PUBHTML + '&_t=' + bust, { cache: 'no-store' });
+    if (res.ok) { const rows = parseHTMLTable(await res.text()); if (rows.length > 1) return rows; }
   } catch(_) {}
-  // Fallback 1: corsproxy.io
+  // 2. CSV direct
   try {
-    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(SHEET_CSV_URL + bust), { cache: 'no-store' });
-    if (res.ok) return await res.text();
+    const res = await fetch(SHEET_CSV_URL + '&_t=' + bust, { cache: 'no-store' });
+    if (res.ok) { const rows = parseCSV(await res.text()); if (rows.length > 1) return rows; }
   } catch(_) {}
-  // Fallback 2: allorigins
+  // 3. pubhtml via corsproxy.io
   try {
-    const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(SHEET_CSV_URL + bust), { cache: 'no-store' });
-    if (res.ok) return await res.text();
+    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(SHEET_PUBHTML), { cache: 'no-store' });
+    if (res.ok) { const rows = parseHTMLTable(await res.text()); if (rows.length > 1) return rows; }
+  } catch(_) {}
+  // 4. CSV via corsproxy.io
+  try {
+    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(SHEET_CSV_URL), { cache: 'no-store' });
+    if (res.ok) { const rows = parseCSV(await res.text()); if (rows.length > 1) return rows; }
+  } catch(_) {}
+  // 5. pubhtml via allorigins
+  try {
+    const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(SHEET_PUBHTML), { cache: 'no-store' });
+    if (res.ok) { const rows = parseHTMLTable(await res.text()); if (rows.length > 1) return rows; }
   } catch(_) {}
   throw new Error('All fetch attempts failed');
 }
@@ -757,8 +784,7 @@ async function refreshFromSheet() {
   statusEl.textContent = '';
   statusEl.classList.remove('error');
   try {
-    const csvText = await fetchCSV();
-    const rows = parseCSV(csvText);
+    const rows = await fetchRows();
     const products = buildProductsFromRows(rows);
     if (!products.length) throw new Error('No rows parsed from sheet');
     // Strip P&L — Cost / Revenue from Catalog (not tracked here)
