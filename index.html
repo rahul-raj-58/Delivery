@@ -434,7 +434,11 @@ function initials(name) {
   return name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
 }
 function renderEmpty() {
-  document.getElementById('glance').innerHTML = '<p style="color:var(--ink-muted);font-size:13px;margin:0">No data yet — click <strong>Refresh</strong> to load live data from the sheet.</p>';
+  const inArtifact = typeof window.claude !== 'undefined';
+  const msg = inArtifact
+    ? 'Click <strong>Refresh</strong> above — Claude will ask permission to fetch your sheet data. Click <strong>Allow</strong> when prompted.'
+    : 'No data yet — click <strong>Refresh</strong> to load live data from the sheet.';
+  document.getElementById('glance').innerHTML = `<p style="color:var(--ink-muted);font-size:13px;margin:0">${msg}</p>`;
   document.getElementById('sections').innerHTML = '';
 }
 function renderGlance() {
@@ -663,36 +667,48 @@ function parseHTMLTable(html) {
   if (rows.length < 2) throw new Error('Table has no data rows');
   return rows;
 }
-async function fetchRows() {
+async function fetchRows(statusEl) {
   const bust = Date.now();
-  // 1. CSV direct (works when opened locally or on unrestricted hosts)
+
+  // 1. Direct CSV fetch — works when opened locally in Chrome
   try {
     const res = await fetch(SHEET_CSV_URL + '&_t=' + bust, { cache: 'no-store' });
     if (res.ok) { const rows = parseCSV(await res.text()); if (rows.length > 1) return rows; }
   } catch(_) {}
-  // 2. pubhtml direct
+
+  // 2. Direct pubhtml fetch
   try {
     const res = await fetch(SHEET_PUBHTML + '&_t=' + bust, { cache: 'no-store' });
     if (res.ok) { const rows = parseHTMLTable(await res.text()); if (rows.length > 1) return rows; }
   } catch(_) {}
-  // 3. Ask Claude to fetch the data via its backend (works inside Artifact preview where CSP blocks direct fetches)
-  try {
-    const sample = window.claude ? await claude.use('sample') : null;
+
+  // 3. Claude backend fetch — works inside Artifact preview (claude.ai blocks direct fetches via CSP)
+  if (typeof window.claude !== 'undefined') {
+    const sample = await claude.use('sample');
     if (sample) {
-      const statusEl = document.getElementById('refreshStatus');
-      if (statusEl) { statusEl.textContent = 'Fetching via Claude… (may take up to 30s)'; statusEl.classList.remove('error'); }
-      const result = await sample.json(
-        `Fetch this publicly published Google Sheets CSV URL and return its full contents as a JSON array of arrays of strings. The first element should be the header row. Return ONLY the raw JSON array with no markdown, no explanation, and no code blocks.\nURL: ${SHEET_CSV_URL}`
-      );
-      if (Array.isArray(result) && result.length > 1) return result;
+      if (statusEl) { statusEl.textContent = 'Fetching via Claude… click Allow if a permission prompt appears (up to 30s)'; statusEl.classList.remove('error'); }
+      try {
+        const result = await sample.json(
+          `Fetch this publicly-published Google Sheets CSV URL and return its full contents as a JSON 2D array of strings (rows × columns). First array element must be the header row. Return ONLY valid JSON — no markdown, no explanation, no code fences.\nURL: ${SHEET_CSV_URL}`
+        );
+        if (Array.isArray(result) && result.length > 1) return result;
+        throw new Error('Empty or invalid data returned');
+      } catch(e) {
+        const code = e && e.code;
+        if (code === 'not_granted') throw new Error('Permission denied — when the Allow prompt appears, click Allow to let Claude fetch your sheet.');
+        if (code === 'rate_limited') throw new Error('Rate limited — wait a moment then click Refresh again.');
+        throw new Error(e && e.message ? e.message : 'Claude fetch failed');
+      }
     }
-  } catch(_) {}
-  // 4. CSV via corsproxy.io
+  }
+
+  // 4. Corsproxy fallback
   try {
     const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(SHEET_CSV_URL), { cache: 'no-store' });
     if (res.ok) { const rows = parseCSV(await res.text()); if (rows.length > 1) return rows; }
   } catch(_) {}
-  throw new Error('All fetch attempts failed');
+
+  throw new Error('All fetch methods failed. Try downloading the HTML and opening it directly in Chrome.');
 }
 async function refreshFromSheet() {
   const btn = document.getElementById('refreshBtn');
@@ -702,7 +718,7 @@ async function refreshFromSheet() {
   statusEl.textContent = '';
   statusEl.classList.remove('error');
   try {
-    const rows = await fetchRows();
+    const rows = await fetchRows(statusEl);
     const products = buildProductsFromRows(rows);
     if (!products.length) throw new Error('No rows parsed from sheet');
     // Strip P&L — Cost / Revenue from Catalog (not tracked here)
@@ -720,7 +736,7 @@ async function refreshFromSheet() {
     });
     document.getElementById('updatedStamp').textContent = stamp;
   } catch (err) {
-    statusEl.textContent = "Couldn't fetch live data — check that the sheet is published publicly (File → Share → Publish to web → Sheet1 → CSV).";
+    statusEl.textContent = err.message || "Couldn't fetch live data — check that the sheet is published publicly.";
     statusEl.classList.add('error');
   } finally {
     btn.disabled = false;
@@ -733,12 +749,20 @@ function initRefreshButton() {
   // Auto-refresh every 1 hour
   setInterval(refreshFromSheet, 5 * 60 * 1000);
 }
-// Clear any old stale cache and always fetch fresh data on load
+// Clear any stale cache
 try { localStorage.removeItem('ops_cache'); } catch(_) {}
 renderGlance();
 renderColumns();
-document.getElementById('updatedStamp').textContent = 'Loading…';
-refreshFromSheet();
 initViewTabs();
 initRefreshButton();
+// Auto-fetch only when opened locally (not in Artifact preview — consent dialog needs explicit user action)
+if (typeof window.claude === 'undefined') {
+  document.getElementById('updatedStamp').textContent = 'Loading…';
+  refreshFromSheet();
+} else {
+  document.getElementById('updatedStamp').textContent = '—';
+  // Show a hint in the status bar
+  const s = document.getElementById('refreshStatus');
+  if (s) { s.textContent = 'Click Refresh — Claude will ask permission to fetch your sheet data. Click Allow when prompted.'; }
+}
 </script>
